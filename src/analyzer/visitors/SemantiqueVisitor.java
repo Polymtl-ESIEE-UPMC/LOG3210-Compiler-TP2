@@ -52,6 +52,7 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     @Override
     public Object visit(SimpleNode node, Object data) {
+
         return data;
     }
 
@@ -68,9 +69,12 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTDeclaration node, Object data) {
         String varName = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
-
+        if(SymbolTable.containsKey(varName))
+        {
+            throw new SemantiqueError("Identifier "+varName+" has multiple declarations");
+        }
         SymbolTable.put(varName, node.getValue().equals("num") ? VarType.Number : VarType.Bool);
-
+        this.VAR++;
         return null;
     }
 
@@ -106,14 +110,15 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTIfStmt node, Object data) {
         callChildenCond(node);
-
+        //m_writer.print(node.jjtGetChild(0).jjtGetChild(0).jjtGetChild(0).jjtGetChild(0));
+        this.IF++;
         return null;
     }
 
     @Override
     public Object visit(ASTWhileStmt node, Object data) {
         callChildenCond(node);
-
+        this.WHILE++;
         return null;
     }
 
@@ -128,7 +133,10 @@ public class SemantiqueVisitor implements ParserVisitor {
         DataStruct d = new DataStruct();
         node.jjtGetChild(1).jjtAccept(this, d);
         VarType exprType = d.type;
-
+        if(varType != exprType)
+        {
+            throw new SemantiqueError("Invalid type in assignation of Identifier " + varName);
+        }
         return null;
     }
 
@@ -141,27 +149,28 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTCompExpr node, Object data) {
         node.childrenAccept(this, data);
+        this.OP += node.getValue() != null ? 1 : 0;
         return null;
     }
 
     @Override
     public Object visit(ASTAddExpr node, Object data) {
         node.childrenAccept(this, data);
-
+        this.OP += node.getOps().size();
         return null;
     }
 
     @Override
     public Object visit(ASTMulExpr node, Object data) {
         node.childrenAccept(this, data);
-
+        this.OP += node.getOps().size();
         return null;
     }
 
     @Override
     public Object visit(ASTBoolExpr node, Object data) {
         node.childrenAccept(this, data);
-
+        this.OP += node.getOps().size();
         return null;
     }
 
@@ -182,6 +191,7 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTNotExpr node, Object data) {
         node.childrenAccept(this, data);
 
+        this.OP += node.getOps().size();
         return null;
     }
 
@@ -189,6 +199,7 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTUnaExpr node, Object data) {
         node.childrenAccept(this, data);
 
+        this.OP += node.getOps().size();
         return null;
     }
 
