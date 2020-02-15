@@ -26,6 +26,8 @@ public class SemantiqueVisitor implements ParserVisitor {
     public int IF = 0;
     public int OP = 0;
 
+    private int comp_op = 0;
+
     public SemantiqueVisitor(PrintWriter writer) {
         m_writer = writer;
     }
@@ -127,9 +129,9 @@ public class SemantiqueVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTAssignStmt node, Object data) {
+        System.out.println(node);
         String varName = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
         VarType varType = SymbolTable.get(varName);
-
         DataStruct d = new DataStruct();
         node.jjtGetChild(1).jjtAccept(this, d);
         VarType exprType = d.type;
@@ -142,34 +144,58 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTExpr node, Object data) {
+        ((DataStruct)data).type = null;
         node.childrenAccept(this, data);
         return null;
     }
 
     @Override
-    public Object visit(ASTCompExpr node, Object data) {
+    public Object visit(ASTBoolExpr node, Object data) {
+        if(node.getOps().size() > 0) System.out.println(node);
         node.childrenAccept(this, data);
+        this.OP += node.getOps().size();
+        return null;
+    }
+
+    @Override
+    public Object visit(ASTCompExpr node, Object data) {
+        if(node.getValue() != null) System.out.println(node);
+        if(((DataStruct)data).type == VarType.Number) {
+            throw new SemantiqueError("Invalid type in Bool");
+        }
+        ((DataStruct)data).type = null;
+        node.childrenAccept(this, data);
+        if(node.getValue() != null) ((DataStruct)data).type = VarType.Bool;
+
         this.OP += node.getValue() != null ? 1 : 0;
         return null;
     }
 
     @Override
     public Object visit(ASTAddExpr node, Object data) {
+        if(node.getOps().size() > 0) System.out.println(node);
+        if(node.jjtGetParent() instanceof ASTCompExpr && ((ASTCompExpr) node.jjtGetParent()).getValue() != null) {
+            if(!(((ASTCompExpr) node.jjtGetParent()).getValue().equals("==")) && !(((ASTCompExpr) node.jjtGetParent()).getValue().equals("!="))) {
+                if(((DataStruct)data).type == VarType.Bool) {
+                    throw new SemantiqueError("Invalid type in Comp");
+                }
+            }
+        }
+        ((DataStruct)data).type = null;
         node.childrenAccept(this, data);
+
         this.OP += node.getOps().size();
         return null;
     }
 
     @Override
     public Object visit(ASTMulExpr node, Object data) {
+        if(node.getOps().size() > 0) System.out.println(node);
+        if(((DataStruct)data).type == VarType.Bool) {
+            throw new SemantiqueError("Invalid type in Add");
+        }
         node.childrenAccept(this, data);
-        this.OP += node.getOps().size();
-        return null;
-    }
 
-    @Override
-    public Object visit(ASTBoolExpr node, Object data) {
-        node.childrenAccept(this, data);
         this.OP += node.getOps().size();
         return null;
     }
@@ -188,7 +214,11 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     */
     @Override
-    public Object visit(ASTNotExpr node, Object data) {
+    public Object visit(ASTUnaExpr node, Object data) {
+        if(node.getOps().size() > 0) System.out.println(node);
+        if(((DataStruct)data).type == VarType.Bool) {
+            throw new SemantiqueError("Invalid type in Mul");
+        }
         node.childrenAccept(this, data);
 
         this.OP += node.getOps().size();
@@ -196,9 +226,14 @@ public class SemantiqueVisitor implements ParserVisitor {
     }
 
     @Override
-    public Object visit(ASTUnaExpr node, Object data) {
+    public Object visit(ASTNotExpr node, Object data) {
+        if(node.getOps().size() > 0) System.out.println(node);
+        if(((DataStruct)data).type == VarType.Bool) {
+            throw new SemantiqueError("Invalid type in Una");
+        }
         node.childrenAccept(this, data);
-
+        if(node.getOps().size() > 0 && ((DataStruct)data).type != VarType.Bool)
+            throw new SemantiqueError("Invalid type in Not, type of " + node.jjtGetChild(0).toString() + " is " + ((DataStruct)data).type);
         this.OP += node.getOps().size();
         return null;
     }
@@ -217,12 +252,14 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTBoolValue node, Object data) {
+        System.out.println(node);
         ((DataStruct) data).type = VarType.Bool;
         return null;
     }
 
     @Override
     public Object visit(ASTIdentifier node, Object data) {
+        System.out.println(node);
 
         if (node.jjtGetParent() instanceof ASTGenValue) {
             String varName = node.getValue();
@@ -236,6 +273,7 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTIntValue node, Object data) {
+        System.out.println(node);
         ((DataStruct) data).type = VarType.Number;
         return null;
     }
@@ -244,7 +282,8 @@ public class SemantiqueVisitor implements ParserVisitor {
     //des outils pour vous simplifier la vie et vous enligner dans le travail
     public enum VarType {
         Bool,
-        Number
+        Number,
+        Unknown
     }
 
     private boolean estCompatible(VarType a, VarType b) {
