@@ -228,6 +228,7 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTNotExpr node, Object data) {
         // no need to check last sibling type, since UnaExpr can have only one child
         node.childrenAccept(this, data);
+	// if it has operators then its type must be Bool, here we can check after childrenAccept because we are sure that it has only 1 child
         if(node.getOps().size() > 0 && ((DataStruct)data).type != VarType.Bool)
             throw new SemantiqueError("Invalid type in expression");
 
