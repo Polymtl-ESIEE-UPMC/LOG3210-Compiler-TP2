@@ -95,6 +95,7 @@ public class SemantiqueVisitor implements ParserVisitor {
         DataStruct d = new DataStruct();
         node.jjtGetChild(0).jjtAccept(this, d);
         VarType exprType = d.type;
+        if (exprType != VarType.Bool) throw new SemantiqueError("Invalid type in condition");
 
         int numChildren = node.jjtGetNumChildren();
         for (int i = 1; i < numChildren; i++) {
@@ -110,7 +111,6 @@ public class SemantiqueVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTIfStmt node, Object data) {
         callChildenCond(node);
-        //m_writer.print(node.jjtGetChild(0).jjtGetChild(0).jjtGetChild(0).jjtGetChild(0));
         this.IF++;
         return null;
     }
