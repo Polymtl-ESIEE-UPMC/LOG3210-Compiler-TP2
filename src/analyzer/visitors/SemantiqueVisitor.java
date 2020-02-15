@@ -156,9 +156,9 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTCompExpr node, Object data) {
         // if the last sibling has type Number, it is an error, since their parrent BoolExpr requires type Bool if having more than 1 child
         if(((DataStruct)data).type == VarType.Number) {
-            throw new SemantiqueError("Invalid type in Bool");
+            throw new SemantiqueError("Invalid type in expression");
         }
-        // we already check type error, now the last sibling type has no effect anymore, we init it because its type Bool can cause problem for first child
+        // we already check type error, now the last sibling type has no effect anymore, we init data because its type Bool can cause problem to the first child
         ((DataStruct)data).init();
         node.childrenAccept(this, data);
         // if everything is OK, the type of this CompExpr must be Bool, since its children can be Bool (true == true) or Number (1 > 0)
@@ -170,15 +170,18 @@ public class SemantiqueVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTAddExpr node, Object data) {
-        // if the operator before this node is not > < >= <= then the last sibling type Bool is invalid
-        if(((DataStruct)data).type == VarType.Bool) {
+        VarType current_type = ((DataStruct)data).type;
+        // if the operator before this node is not == nor != then the last sibling type Bool is invalid
+        if(current_type == VarType.Bool) {
             if(!(((ASTCompExpr) node.jjtGetParent()).getValue().equals("==")) && !(((ASTCompExpr) node.jjtGetParent()).getValue().equals("!="))) {
-                throw new SemantiqueError("Invalid type in Comp");
+                throw new SemantiqueError("Invalid type in expression");
             }
         }
-        // we already check type error, now the last sibling type has no effect anymore, we init it because its type Bool can cause problem for first child
+        // we already check type error, now the last sibling type has no effect anymore, we init data because its type Bool can cause problem to the first child
         ((DataStruct)data).init();
         node.childrenAccept(this, data);
+        // if the operator before this node is == or != then the type of this node must match the last sibling type
+        if (current_type != null && current_type != ((DataStruct)data).type) throw new SemantiqueError("Invalid type in expression");
 
         this.OP += node.getOps().size();
         return null;
@@ -188,7 +191,7 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTMulExpr node, Object data) {
         // if the last sibling has type Bool, it is an error, since their parrent AddExpr requires type Number if having more than 1 child
         if(((DataStruct)data).type == VarType.Bool) {
-            throw new SemantiqueError("Invalid type in Add");
+            throw new SemantiqueError("Invalid type in expression");
         }
         node.childrenAccept(this, data);
 
@@ -213,7 +216,7 @@ public class SemantiqueVisitor implements ParserVisitor {
     public Object visit(ASTUnaExpr node, Object data) {
         // if the last sibling has type Bool, it is an error, since their parrent MulExpr requires type Number if having more than 1 child
         if(((DataStruct)data).type == VarType.Bool) {
-            throw new SemantiqueError("Invalid type in Mul");
+            throw new SemantiqueError("Invalid type in expression");
         }
         node.childrenAccept(this, data);
 
@@ -226,7 +229,7 @@ public class SemantiqueVisitor implements ParserVisitor {
         // no need to check last sibling type, since UnaExpr can have only one child
         node.childrenAccept(this, data);
         if(node.getOps().size() > 0 && ((DataStruct)data).type != VarType.Bool)
-            throw new SemantiqueError("Invalid type in Not");
+            throw new SemantiqueError("Invalid type in expression");
 
         this.OP += node.getOps().size();
         return null;
